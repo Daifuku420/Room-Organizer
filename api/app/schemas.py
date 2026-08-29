@@ -65,3 +65,63 @@ class WallInput(BaseModel):
 
 class RoomDetail(RoomSummary):
     walls: list[Wall]
+
+
+# --- layouts & placements ---------------------------------------------------
+
+
+class LayoutCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    is_default: bool = False
+
+
+class LayoutSummary(BaseModel):
+    id: str
+    room_id: str
+    name: str
+    is_default: bool
+    updated_at: datetime
+
+
+class PlacementCreate(BaseModel):
+    label: str = Field(min_length=1, max_length=120)
+    x_mm: int
+    y_mm: int
+    z_mm: int = 0
+    rotation_ddeg: int = Field(default=0, ge=0, le=3600)
+    width_mm: int = Field(gt=0, le=20_000)
+    depth_mm: int = Field(gt=0, le=20_000)
+    height_mm: int = Field(gt=0, le=10_000)
+    catalog_item_id: str | None = None
+
+
+class PlacementPatch(BaseModel):
+    """Every field optional: the editor sends only what the drag changed."""
+
+    label: str | None = Field(default=None, min_length=1, max_length=120)
+    x_mm: int | None = None
+    y_mm: int | None = None
+    z_mm: int | None = None
+    rotation_ddeg: int | None = Field(default=None, ge=0, le=3600)
+    width_mm: int | None = Field(default=None, gt=0, le=20_000)
+    depth_mm: int | None = Field(default=None, gt=0, le=20_000)
+    height_mm: int | None = Field(default=None, gt=0, le=10_000)
+    locked: bool | None = None
+
+
+class Placement(BaseModel):
+    id: str
+    label: str
+    x_mm: int
+    y_mm: int
+    z_mm: int
+    rotation_ddeg: int
+    width_mm: int
+    depth_mm: int
+    height_mm: int
+    locked: bool
+    catalog_item_id: str | None
+
+
+class LayoutDetail(LayoutSummary):
+    placements: list[Placement]

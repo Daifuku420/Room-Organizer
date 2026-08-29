@@ -1,0 +1,344 @@
+/* Room Planner — drafting table
+ *
+ * Chrome is graphite; the plan is vellum. Linework follows architectural
+ * convention: walls are poché (filled solid), dimensions carry 45-degree ticks
+ * rather than arrowheads, collisions are hatched in red pencil.
+ *
+ * Bahnschrift ships with Windows and descends from DIN 1451, the face used on
+ * German technical drawings. It costs no download and works offline.
+ */
+
+:root {
+  --vellum: #dfdcd4;
+  --vellum-line: #c6c1b5;
+  --graphite: #1d2024;
+  --graphite-2: #262a2f;
+  --graphite-3: #32373d;
+  --lead: #8a9099;
+  --chalk: #e9e7e1;
+  --ink: #14161a;
+  --blueprint: #3c7ea1;
+  --sanguine: #b4472e;
+
+  --font-ui: "Bahnschrift", "DIN Alternate", "Segoe UI", system-ui, sans-serif;
+  --font-data: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+
+  --pad: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--graphite);
+  color: var(--chalk);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+:focus-visible {
+  outline: 2px solid var(--blueprint);
+  outline-offset: 2px;
+}
+
+/* --- shell ---------------------------------------------------------------- */
+
+.shell {
+  display: grid;
+  grid-template-rows: 46px 1fr;
+  height: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 var(--pad);
+  background: var(--graphite-2);
+  border-bottom: 1px solid var(--graphite-3);
+}
+
+.topbar h1 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.topbar .spacer {
+  flex: 1;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 230px 1fr 260px;
+  min-height: 0;
+}
+
+.panel {
+  background: var(--graphite-2);
+  padding: var(--pad);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel--left {
+  border-right: 1px solid var(--graphite-3);
+}
+
+.panel--right {
+  border-left: 1px solid var(--graphite-3);
+}
+
+.panel h2 {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lead);
+  margin: 0;
+}
+
+/* --- controls ------------------------------------------------------------- */
+
+button {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--chalk);
+  background: var(--graphite-3);
+  border: 1px solid #3d434a;
+  border-radius: 3px;
+  padding: 7px 11px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: #3b4148;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: var(--blueprint);
+  border-color: var(--blueprint);
+  color: #f2f6f8;
+}
+
+button.primary:hover:not(:disabled) {
+  background: #4a8fb3;
+}
+
+button.danger {
+  color: #e2a294;
+  border-color: #4a3733;
+}
+
+button.danger:hover:not(:disabled) {
+  background: #3a2a26;
+}
+
+button.chip {
+  padding: 6px 9px;
+  font-size: 12px;
+  text-align: left;
+  width: 100%;
+}
+
+input,
+select {
+  font-family: var(--font-data);
+  font-size: 13px;
+  width: 100%;
+  color: var(--chalk);
+  background: var(--graphite);
+  border: 1px solid var(--graphite-3);
+  border-radius: 3px;
+  padding: 7px 9px;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--blueprint);
+  outline: none;
+}
+
+label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lead);
+  margin-bottom: 4px;
+}
+
+.field {
+  margin-bottom: 10px;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--lead);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.error {
+  font-size: 12px;
+  color: #e2a294;
+  background: #33211d;
+  border-left: 2px solid var(--sanguine);
+  padding: 8px 10px;
+  line-height: 1.45;
+}
+
+/* --- object list ---------------------------------------------------------- */
+
+.object {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 9px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.object:hover {
+  background: var(--graphite-3);
+}
+
+.object[aria-pressed="true"] {
+  background: var(--graphite-3);
+  border-color: var(--blueprint);
+}
+
+.object .dims {
+  font-family: var(--font-data);
+  font-size: 11px;
+  color: var(--lead);
+  white-space: nowrap;
+}
+
+.object.clashing .name {
+  color: #e2a294;
+}
+
+/* --- plan ----------------------------------------------------------------- */
+
+.plan {
+  background: var(--vellum);
+  min-width: 0;
+  position: relative;
+}
+
+.plan svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.plan-legend {
+  position: absolute;
+  left: var(--pad);
+  bottom: var(--pad);
+  font-family: var(--font-data);
+  font-size: 11px;
+  color: #6d6a61;
+  letter-spacing: 0.04em;
+}
+
+.piece {
+  cursor: grab;
+}
+
+.piece.dragging {
+  cursor: grabbing;
+}
+
+.piece.locked {
+  cursor: default;
+}
+
+.dim-text {
+  font-family: var(--font-data);
+  font-size: 11px;
+  fill: #5c5950;
+}
+
+.piece-label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--ink);
+  letter-spacing: 0.02em;
+}
+
+/* --- centred forms -------------------------------------------------------- */
+
+.centred {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--graphite-2);
+  border: 1px solid var(--graphite-3);
+  border-radius: 5px;
+  padding: 26px;
+}
+
+.card h1 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 0 0 6px;
+}
+
+.card .hint {
+  margin-bottom: 18px;
+}
+
+.rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

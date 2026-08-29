@@ -10,8 +10,15 @@ import asyncpg
 from ..schemas import PlacementCreate, PlacementPatch
 
 _PLACEMENT_COLS = """
-    id::text, label, x_mm, y_mm, z_mm, rotation_ddeg,
-    width_mm, depth_mm, height_mm, locked, catalog_item_id::text
+    p.id::text, p.label, p.x_mm, p.y_mm, p.z_mm, p.rotation_ddeg,
+    p.width_mm, p.depth_mm, p.height_mm, p.locked, p.catalog_item_id::text
+"""
+
+# Same list, table-qualified. Queries that join layout and room must use this:
+# unqualified "id" would be ambiguous across three tables and Postgres rejects it.
+_PLACEMENT_COLS_Q = """
+    p.id::text, p.label, p.x_mm, p.y_mm, p.z_mm, p.rotation_ddeg,
+    p.width_mm, p.depth_mm, p.height_mm, p.locked, p.catalog_item_id::text
 """
 
 
@@ -73,7 +80,7 @@ async def get(conn: asyncpg.Connection, workspace_id: str, layout_id: str) -> di
 
 async def placements_for_layout(conn: asyncpg.Connection, layout_id: str) -> list[dict]:
     rows = await conn.fetch(
-        f"SELECT {_PLACEMENT_COLS} FROM placement WHERE layout_id = $1 ORDER BY created_at",
+        f"SELECT {_PLACEMENT_COLS} FROM placement p WHERE p.layout_id = $1 ORDER BY p.created_at",
         layout_id,
     )
     return [dict(r) for r in rows]
@@ -84,7 +91,7 @@ async def add_placement(
 ) -> dict:
     row = await conn.fetchrow(
         f"""
-        INSERT INTO placement (layout_id, label, x_mm, y_mm, z_mm, rotation_ddeg,
+        INSERT INTO placement AS p (layout_id, label, x_mm, y_mm, z_mm, rotation_ddeg,
                                width_mm, depth_mm, height_mm, catalog_item_id)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
           RETURNING {_PLACEMENT_COLS}
@@ -106,14 +113,14 @@ async def patch_placement(
     # come from the pydantic model, never from raw request keys, so there is no
     # injection surface here.
     assignments = ", ".join(f"{col} = ${i + 3}" for i, col in enumerate(fields))
-    set_clause = f"SET {assignments}" if assignments else "SET label = label"
+    set_clause = f"SET {assignments}" if assignments else "SET label = p.label"
 
     row = await conn.fetchrow(
         f"""
         UPDATE placement p {set_clause}
           FROM layout l JOIN room r ON r.id = l.room_id
          WHERE p.id = $1 AND p.layout_id = l.id AND r.workspace_id = $2
-     RETURNING {_PLACEMENT_COLS}
+     RETURNING {_PLACEMENT_COLS_Q}
         """,
         placement_id, workspace_id, *fields.values(),
     )

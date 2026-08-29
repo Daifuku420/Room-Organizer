@@ -65,6 +65,9 @@ class WallInput(BaseModel):
 
 class RoomDetail(RoomSummary):
     walls: list[Wall]
+    # Openings are returned with the room rather than behind their own request:
+    # the plan cannot be drawn without them, so a second round trip buys nothing.
+    openings: list["Opening"] = []
 
 
 # --- layouts & placements ---------------------------------------------------
@@ -125,3 +128,37 @@ class Placement(BaseModel):
 
 class LayoutDetail(LayoutSummary):
     placements: list[Placement]
+
+
+# --- openings ---------------------------------------------------------------
+
+
+class OpeningCreate(BaseModel):
+    kind: Literal["door", "window", "passage"]
+    offset_mm: int = Field(ge=0, le=50_000)
+    width_mm: int = Field(gt=0, le=10_000)
+    sill_mm: int = Field(default=0, ge=0, le=5_000)
+    height_mm: int = Field(gt=0, le=5_000)
+    swing: Literal["in_left", "in_right", "out_left", "out_right", "sliding", "none"] = "none"
+
+
+class OpeningPatch(BaseModel):
+    offset_mm: int | None = Field(default=None, ge=0, le=50_000)
+    width_mm: int | None = Field(default=None, gt=0, le=10_000)
+    sill_mm: int | None = Field(default=None, ge=0, le=5_000)
+    height_mm: int | None = Field(default=None, gt=0, le=5_000)
+    swing: (
+        Literal["in_left", "in_right", "out_left", "out_right", "sliding", "none"] | None
+    ) = None
+    wall_id: str | None = None
+
+
+class Opening(BaseModel):
+    id: str
+    wall_id: str
+    kind: str
+    offset_mm: int
+    width_mm: int
+    sill_mm: int
+    height_mm: int
+    swing: str

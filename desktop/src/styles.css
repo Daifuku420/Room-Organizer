@@ -364,3 +364,7 @@ label {
     transition: none !important;
   }
 }
+
+.opening {
+  cursor: ew-resize;
+}

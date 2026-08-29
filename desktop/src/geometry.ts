@@ -6,7 +6,7 @@
  * The SVG layer does the flip so that nothing here has to think about it.
  */
 
-import type { Placement, Wall } from "./types";
+import type { Opening, Placement, Wall } from "./types";
 
 export interface Vec {
   x: number;
@@ -193,3 +193,123 @@ export function gapsToWalls(p: Placement, room: Bounds): Gaps {
 
 export const mmToCm = (mm: number) => Math.round(mm / 10);
 export const snap = (mm: number, grid = 10) => Math.round(mm / grid) * grid;
+
+// --- openings ---------------------------------------------------------------
+
+
+/**
+ * Wall geometry in the form the plan needs it: a unit direction, a length, and
+ * the inward normal.
+ *
+ * The inward normal assumes the wall loop is wound counter-clockwise, which is
+ * what ensureCCW guarantees and what the room editor writes. On a CCW loop the
+ * interior is always to the left of the direction of travel, so rotating the
+ * direction a quarter turn left points into the room.
+ */
+export interface WallFrame {
+  start: Vec;
+  dir: Vec;
+  inward: Vec;
+  length: number;
+}
+
+export function wallFrame(wall: Wall): WallFrame {
+  const dx = wall.x2_mm - wall.x1_mm;
+  const dy = wall.y2_mm - wall.y1_mm;
+  const length = Math.hypot(dx, dy) || 1;
+  const dir = { x: dx / length, y: dy / length };
+  return {
+    start: { x: wall.x1_mm, y: wall.y1_mm },
+    dir,
+    inward: { x: -dir.y, y: dir.x },
+    length,
+  };
+}
+
+const along = (frame: WallFrame, distance: number): Vec => ({
+  x: frame.start.x + frame.dir.x * distance,
+  y: frame.start.y + frame.dir.y * distance,
+});
+
+/** The two points where an opening meets the wall line. */
+export function openingEdges(frame: WallFrame, opening: Opening): [Vec, Vec] {
+  return [along(frame, opening.offset_mm), along(frame, opening.offset_mm + opening.width_mm)];
+}
+
+/**
+ * The floor area a door leaf sweeps: a quarter-disc from the hinge.
+ *
+ * A circular sector of 90 degrees is convex, which matters — it means the same
+ * polygon clipper used for furniture collisions works here unchanged.
+ */
+export function doorSwingPolygon(frame: WallFrame, opening: Opening, steps = 12): Vec[] {
+  if (opening.kind !== "door") return [];
+  if (opening.swing === "sliding" || opening.swing === "none") return [];
+
+  const [near, far] = openingEdges(frame, opening);
+  const hingeAtStart = opening.swing.endsWith("_left");
+  const opensInward = opening.swing.startsWith("in_");
+
+  const hinge = hingeAtStart ? near : far;
+  const leaf = hingeAtStart ? frame.dir : { x: -frame.dir.x, y: -frame.dir.y };
+  const side = opensInward
+    ? frame.inward
+    : { x: -frame.inward.x, y: -frame.inward.y };
+
+  const radius = opening.width_mm;
+  const from = Math.atan2(leaf.y, leaf.x);
+  let sweep = Math.atan2(side.y, side.x) - from;
+  // Take the short way round, so the sector is the quarter turn, not three of them.
+  while (sweep > Math.PI) sweep -= 2 * Math.PI;
+  while (sweep < -Math.PI) sweep += 2 * Math.PI;
+
+  const arc: Vec[] = [hinge];
+  for (let i = 0; i <= steps; i++) {
+    const angle = from + (sweep * i) / steps;
+    arc.push({
+      x: hinge.x + radius * Math.cos(angle),
+      y: hinge.y + radius * Math.sin(angle),
+    });
+  }
+  return ensureCCW(arc);
+}
+
+export interface Obstruction {
+  placementId: string;
+  openingId: string;
+  polygon: Vec[];
+  areaMm2: number;
+}
+
+/** Furniture standing where a door needs to open. */
+export function findObstructions(
+  placements: Placement[],
+  swings: { openingId: string; polygon: Vec[] }[],
+): Obstruction[] {
+  const out: Obstruction[] = [];
+  for (const p of placements) {
+    const footprint = ensureCCW(corners(p));
+    for (const swing of swings) {
+      if (swing.polygon.length < 3) continue;
+      const overlap = intersectConvex(footprint, swing.polygon);
+      if (overlap.length < 3) continue;
+      const areaMm2 = polygonArea(overlap);
+      if (areaMm2 < 100) continue;
+      out.push({
+        placementId: p.id,
+        openingId: swing.openingId,
+        polygon: overlap,
+        areaMm2,
+      });
+    }
+  }
+  return out;
+}
+
+/** Where along its wall an opening should sit, given a point on the plan. */
+export function projectOntoWall(frame: WallFrame, point: Vec, width: number): number {
+  const dx = point.x - frame.start.x;
+  const dy = point.y - frame.start.y;
+  const distance = dx * frame.dir.x + dy * frame.dir.y;
+  return Math.max(0, Math.min(frame.length - width, distance - width / 2));
+}

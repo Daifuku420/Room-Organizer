@@ -12,6 +12,7 @@ import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import type {
   LayoutDetail,
   LayoutSummary,
+  Opening,
   Placement,
   RoomDetail,
   RoomSummary,
@@ -106,7 +107,26 @@ export const api = {
 
   deletePlacement: (id: string) =>
     request<void>(`/placements/${id}`, { method: "DELETE" }),
+
+  addOpening: (wallId: string, opening: Omit<Opening, "id" | "wall_id">) =>
+    request<Opening>(`/walls/${wallId}/openings`, {
+      method: "POST",
+      body: body(opening),
+    }),
+
+  patchOpening: (id: string, patch: Partial<Opening>) =>
+    request<Opening>(`/openings/${id}`, { method: "PATCH", body: body(patch) }),
+
+  deleteOpening: (id: string) =>
+    request<void>(`/openings/${id}`, { method: "DELETE" }),
 };
+
+/** Standard French door and window sizes, so a plan can be roughed out fast. */
+export const OPENING_PRESETS = {
+  door: { kind: "door", width_mm: 830, sill_mm: 0, height_mm: 2040, swing: "in_left" },
+  window: { kind: "window", width_mm: 1200, sill_mm: 950, height_mm: 1150, swing: "none" },
+  passage: { kind: "passage", width_mm: 900, sill_mm: 0, height_mm: 2040, swing: "none" },
+} as const;
 
 /** Sensible starting sizes so a plan can be built before the catalog exists. */
 export const PRESETS: {

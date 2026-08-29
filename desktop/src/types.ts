@@ -20,6 +20,7 @@ export interface Wall {
 
 export interface RoomDetail extends RoomSummary {
   walls: Wall[];
+  openings: Opening[];
 }
 
 export interface LayoutSummary {
@@ -47,3 +48,27 @@ export interface Placement {
 export interface LayoutDetail extends LayoutSummary {
   placements: Placement[];
 }
+
+export type SwingDir =
+  | "in_left"
+  | "in_right"
+  | "out_left"
+  | "out_right"
+  | "sliding"
+  | "none";
+
+export interface Opening {
+  id: string;
+  wall_id: string;
+  kind: "door" | "window" | "passage";
+  offset_mm: number;
+  width_mm: number;
+  sill_mm: number;
+  height_mm: number;
+  swing: SwingDir;
+}
+
+export type Selection =
+  | { kind: "placement"; id: string }
+  | { kind: "opening"; id: string }
+  | null;

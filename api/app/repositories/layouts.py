@@ -14,13 +14,6 @@ _PLACEMENT_COLS = """
     p.width_mm, p.depth_mm, p.height_mm, p.locked, p.catalog_item_id::text
 """
 
-# Same list, table-qualified. Queries that join layout and room must use this:
-# unqualified "id" would be ambiguous across three tables and Postgres rejects it.
-_PLACEMENT_COLS_Q = """
-    p.id::text, p.label, p.x_mm, p.y_mm, p.z_mm, p.rotation_ddeg,
-    p.width_mm, p.depth_mm, p.height_mm, p.locked, p.catalog_item_id::text
-"""
-
 
 async def list_for_room(
     conn: asyncpg.Connection, workspace_id: str, room_id: str
@@ -120,7 +113,7 @@ async def patch_placement(
         UPDATE placement p {set_clause}
           FROM layout l JOIN room r ON r.id = l.room_id
          WHERE p.id = $1 AND p.layout_id = l.id AND r.workspace_id = $2
-     RETURNING {_PLACEMENT_COLS_Q}
+     RETURNING {_PLACEMENT_COLS}
         """,
         placement_id, workspace_id, *fields.values(),
     )

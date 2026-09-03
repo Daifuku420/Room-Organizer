@@ -1,0 +1,17 @@
+source_key,external_id,name,category,brand,width_mm,depth_mm,height_mm,price_cents,currency,product_url,thumbnail_url,clearance_front_mm
+ikea_fr,malm-140,MALM bed frame 140x200,bed,IKEA,1440,2090,1000,17900,EUR,,,600
+ikea_fr,malm-160,MALM bed frame 160x200,bed,IKEA,1640,2090,1000,19900,EUR,,,600
+ikea_fr,hemnes-day,HEMNES daybed frame,bed,IKEA,970,2064,660,29900,EUR,,,600
+ikea_fr,micke-desk,MICKE desk,desk,IKEA,1050,500,750,8900,EUR,,,700
+ikea_fr,bekant-desk,BEKANT desk 160x80,desk,IKEA,1600,800,730,19900,EUR,,,800
+ikea_fr,pax-wardrobe-100,PAX wardrobe 100x60,wardrobe,IKEA,1000,600,2360,15000,EUR,,,900
+ikea_fr,pax-wardrobe-150,PAX wardrobe 150x60,wardrobe,IKEA,1500,600,2360,21000,EUR,,,900
+ikea_fr,kivik-sofa-3,KIVIK 3-seat sofa,sofa,IKEA,2280,950,830,59900,EUR,,,700
+ikea_fr,klippan-sofa,KLIPPAN 2-seat sofa,sofa,IKEA,1800,880,660,29900,EUR,,,700
+ikea_fr,hemnes-nightstand,HEMNES nightstand,nightstand,IKEA,460,350,700,8000,EUR,,,300
+ikea_fr,malm-nightstand,MALM nightstand,nightstand,IKEA,400,480,550,4500,EUR,,,300
+ikea_fr,markus-chair,MARKUS office chair,chair,IKEA,620,620,1150,17900,EUR,,,500
+ikea_fr,billy-bookcase,BILLY bookcase,bookshelf,IKEA,800,280,2020,6900,EUR,,,400
+ikea_fr,malm-dresser-6,MALM 6-drawer dresser,dresser,IKEA,1600,480,780,24900,EUR,,,600
+manual,dining-table-oak,Oak dining table 180x90,table,,1800,900,750,0,EUR,,,900
+manual,armchair-vintage,Vintage armchair,armchair,,780,800,900,0,EUR,,,600

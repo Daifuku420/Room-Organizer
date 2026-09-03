@@ -10,6 +10,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY alembic.ini entrypoint.sh ./
 COPY alembic ./alembic
 COPY app ./app
+COPY scripts ./scripts
+COPY data ./data
 
 RUN useradd --system --uid 1001 appuser \
  && mkdir -p /media && chown appuser /media \

@@ -10,12 +10,14 @@
 
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import type {
+  CatalogItem,
   LayoutDetail,
   LayoutSummary,
   Opening,
   Placement,
   RoomDetail,
   RoomSummary,
+  WallFeature,
 } from "./types";
 
 const BASE_KEY = "roomplanner.base";
@@ -119,6 +121,28 @@ export const api = {
 
   deleteOpening: (id: string) =>
     request<void>(`/openings/${id}`, { method: "DELETE" }),
+
+  addFeature: (wallId: string, feature: Omit<WallFeature, "id" | "wall_id">) =>
+    request<WallFeature>(`/walls/${wallId}/features`, {
+      method: "POST",
+      body: body(feature),
+    }),
+
+  patchFeature: (id: string, patch: Partial<WallFeature>) =>
+    request<WallFeature>(`/features/${id}`, { method: "PATCH", body: body(patch) }),
+
+  deleteFeature: (id: string) =>
+    request<void>(`/features/${id}`, { method: "DELETE" }),
+
+  searchCatalog: (q: string, category: string) => {
+    const params = new URLSearchParams();
+    if (q.trim()) params.set("q", q.trim());
+    if (category) params.set("category", category);
+    const qs = params.toString();
+    return request<CatalogItem[]>(`/catalog/items${qs ? `?${qs}` : ""}`);
+  },
+
+  listCatalogCategories: () => request<string[]>("/catalog/categories"),
 };
 
 /** Standard French door and window sizes, so a plan can be roughed out fast. */
@@ -126,6 +150,37 @@ export const OPENING_PRESETS = {
   door: { kind: "door", width_mm: 830, sill_mm: 0, height_mm: 2040, swing: "in_left" },
   window: { kind: "window", width_mm: 1200, sill_mm: 950, height_mm: 1150, swing: "none" },
   passage: { kind: "passage", width_mm: 900, sill_mm: 0, height_mm: 2040, swing: "none" },
+} as const;
+
+/** Typical fittings, so a wall feature can be dropped in without measuring first. */
+export const FEATURE_PRESETS = {
+  radiator: {
+    kind: "radiator",
+    label: "Radiator",
+    width_mm: 800,
+    z_mm: 100,
+    height_mm: 600,
+    depth_mm: 80,
+    clearance_mm: 150,
+  },
+  socket: {
+    kind: "socket",
+    label: "Socket",
+    width_mm: 80,
+    z_mm: 300,
+    height_mm: 80,
+    depth_mm: 20,
+    clearance_mm: 0,
+  },
+  switch: {
+    kind: "switch",
+    label: "Switch",
+    width_mm: 80,
+    z_mm: 1100,
+    height_mm: 80,
+    depth_mm: 20,
+    clearance_mm: 0,
+  },
 } as const;
 
 /** Sensible starting sizes so a plan can be built before the catalog exists. */

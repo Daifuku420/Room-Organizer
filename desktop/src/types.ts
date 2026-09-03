@@ -21,6 +21,7 @@ export interface Wall {
 export interface RoomDetail extends RoomSummary {
   walls: Wall[];
   openings: Opening[];
+  features: WallFeature[];
 }
 
 export interface LayoutSummary {
@@ -68,7 +69,37 @@ export interface Opening {
   swing: SwingDir;
 }
 
+export type FeatureKind = "radiator" | "socket" | "switch" | "vent" | "pipe" | "other";
+
+export interface WallFeature {
+  id: string;
+  wall_id: string;
+  kind: FeatureKind;
+  label: string | null;
+  offset_mm: number;
+  width_mm: number;
+  z_mm: number;
+  height_mm: number;
+  depth_mm: number;
+  clearance_mm: number;
+}
+
+export interface CatalogItem {
+  id: string;
+  source: string;
+  name: string;
+  category: string;
+  brand: string | null;
+  width_mm: number;
+  depth_mm: number;
+  height_mm: number;
+  price_cents: number | null;
+  currency: string;
+  clearance_front_mm: number;
+}
+
 export type Selection =
   | { kind: "placement"; id: string }
   | { kind: "opening"; id: string }
+  | { kind: "feature"; id: string }
   | null;

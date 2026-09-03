@@ -249,6 +249,39 @@ label {
   color: #e2a294;
 }
 
+.catalog-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 3px;
+}
+
+.catalog-item:hover {
+  background: var(--graphite-3);
+}
+
+.catalog-item-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.catalog-item-meta .name {
+  font-size: 13px;
+}
+
+.catalog-item-meta .dims {
+  font-family: var(--font-data);
+  font-size: 11px;
+  color: var(--lead);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* --- plan ----------------------------------------------------------------- */
 
 .plan {
@@ -365,6 +398,7 @@ label {
   }
 }
 
-.opening {
+.opening,
+.feature {
   cursor: ew-resize;
 }

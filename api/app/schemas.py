@@ -65,9 +65,11 @@ class WallInput(BaseModel):
 
 class RoomDetail(RoomSummary):
     walls: list[Wall]
-    # Openings are returned with the room rather than behind their own request:
-    # the plan cannot be drawn without them, so a second round trip buys nothing.
+    # Openings and features are returned with the room rather than behind their
+    # own request: the plan cannot be drawn (or checked for clearance) without
+    # them, so a second round trip buys nothing.
     openings: list["Opening"] = []
+    features: list["WallFeature"] = []
 
 
 # --- layouts & placements ---------------------------------------------------
@@ -162,3 +164,58 @@ class Opening(BaseModel):
     sill_mm: int
     height_mm: int
     swing: str
+
+
+# --- wall features -----------------------------------------------------------
+
+
+class WallFeatureCreate(BaseModel):
+    kind: Literal["radiator", "socket", "switch", "vent", "pipe", "other"]
+    offset_mm: int = Field(ge=0, le=50_000)
+    width_mm: int = Field(gt=0, le=10_000)
+    z_mm: int = Field(ge=0, le=5_000)
+    height_mm: int = Field(gt=0, le=5_000)
+    depth_mm: int = Field(default=0, ge=0, le=2_000)
+    clearance_mm: int = Field(default=0, ge=0, le=2_000)
+    label: str | None = Field(default=None, max_length=120)
+
+
+class WallFeaturePatch(BaseModel):
+    offset_mm: int | None = Field(default=None, ge=0, le=50_000)
+    width_mm: int | None = Field(default=None, gt=0, le=10_000)
+    z_mm: int | None = Field(default=None, ge=0, le=5_000)
+    height_mm: int | None = Field(default=None, gt=0, le=5_000)
+    depth_mm: int | None = Field(default=None, ge=0, le=2_000)
+    clearance_mm: int | None = Field(default=None, ge=0, le=2_000)
+    label: str | None = Field(default=None, max_length=120)
+    wall_id: str | None = None
+
+
+class WallFeature(BaseModel):
+    id: str
+    wall_id: str
+    kind: str
+    label: str | None
+    offset_mm: int
+    width_mm: int
+    z_mm: int
+    height_mm: int
+    depth_mm: int
+    clearance_mm: int
+
+
+# --- catalog -----------------------------------------------------------------
+
+
+class CatalogItem(BaseModel):
+    id: str
+    source: str
+    name: str
+    category: str
+    brand: str | None
+    width_mm: int
+    depth_mm: int
+    height_mm: int
+    price_cents: int | None
+    currency: str
+    clearance_front_mm: int

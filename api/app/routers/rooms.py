@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from ..db import connection
 from ..repositories import openings as openings_repo
 from ..repositories import rooms as repo
+from ..repositories import wall_features as wall_features_repo
 from ..schemas import RoomCreate, RoomDetail, RoomSummary, WallInput
 from ..security import Caller, current_device
 
@@ -45,6 +46,7 @@ async def get_room(room_id: str, caller: Caller = Depends(current_device)):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "no such room")
         room["walls"] = await repo.walls_for_room(conn, room_id)
         room["openings"] = await openings_repo.list_for_room(conn, room_id)
+        room["features"] = await wall_features_repo.list_for_room(conn, room_id)
     return room
 
 
@@ -65,4 +67,5 @@ async def replace_walls(
         room = await repo.get(conn, caller.workspace_id, room_id)
         room["walls"] = await repo.walls_for_room(conn, room_id)
         room["openings"] = await openings_repo.list_for_room(conn, room_id)
+        room["features"] = await wall_features_repo.list_for_room(conn, room_id)
     return room

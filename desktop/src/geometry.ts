@@ -6,7 +6,7 @@
  * The SVG layer does the flip so that nothing here has to think about it.
  */
 
-import type { Opening, Placement, Wall } from "./types";
+import type { Opening, Placement, Wall, WallFeature } from "./types";
 
 export interface Vec {
   x: number;
@@ -226,7 +226,7 @@ export function wallFrame(wall: Wall): WallFrame {
   };
 }
 
-const along = (frame: WallFrame, distance: number): Vec => ({
+export const along = (frame: WallFrame, distance: number): Vec => ({
   x: frame.start.x + frame.dir.x * distance,
   y: frame.start.y + frame.dir.y * distance,
 });
@@ -274,30 +274,54 @@ export function doorSwingPolygon(frame: WallFrame, opening: Opening, steps = 12)
   return ensureCCW(arc);
 }
 
+/**
+ * The floor area in front of a fitting that must stay clear — its own
+ * footprint plus the extra clearance beyond it (e.g. a radiator needs room
+ * to convect, a vent needs room to breathe). Zero clearance means nothing to
+ * flag, which is the default for sockets and switches.
+ */
+export function featureClearancePolygon(frame: WallFrame, feature: WallFeature): Vec[] {
+  if (feature.clearance_mm <= 0) return [];
+  const a = along(frame, feature.offset_mm);
+  const b = along(frame, feature.offset_mm + feature.width_mm);
+  const depth = feature.depth_mm + feature.clearance_mm;
+  const proj = { x: frame.inward.x * depth, y: frame.inward.y * depth };
+  return ensureCCW([
+    a,
+    b,
+    { x: b.x + proj.x, y: b.y + proj.y },
+    { x: a.x + proj.x, y: a.y + proj.y },
+  ]);
+}
+
+export type ObstructionSource =
+  | { kind: "opening"; id: string }
+  | { kind: "feature"; id: string };
+
 export interface Obstruction {
   placementId: string;
-  openingId: string;
+  source: ObstructionSource;
   polygon: Vec[];
   areaMm2: number;
 }
 
-/** Furniture standing where a door needs to open. */
+/** Furniture standing where a door needs to open, or inside a fitting's clearance. */
 export function findObstructions(
   placements: Placement[],
-  swings: { openingId: string; polygon: Vec[] }[],
+  zones: { source: ObstructionSource; polygon: Vec[] }[],
 ): Obstruction[] {
   const out: Obstruction[] = [];
   for (const p of placements) {
     const footprint = ensureCCW(corners(p));
-    for (const swing of swings) {
-      if (swing.polygon.length < 3) continue;
-      const overlap = intersectConvex(footprint, swing.polygon);
+    for (const zone of zones) {
+      if (zone.polygon.length < 3) continue;
+      const overlap = intersectConvex(footprint, zone.polygon);
       if (overlap.length < 3) continue;
       const areaMm2 = polygonArea(overlap);
       if (areaMm2 < 100) continue;
       out.push({
         placementId: p.id,
-        openingId: swing.openingId,
+        source: zone.source,
         polygon: overlap,
         areaMm2,
       });

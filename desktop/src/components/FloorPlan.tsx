@@ -9,9 +9,11 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
+  along,
   boundsOf,
   corners,
   doorSwingPolygon,
+  featureClearancePolygon,
   findCollisions,
   findObstructions,
   gapsToWalls,
@@ -24,18 +26,30 @@ import {
   wallFrame,
   type Vec,
 } from "../geometry";
-import type { Opening, Placement, Selection, Wall } from "../types";
+import type { Opening, Placement, Selection, Wall, WallFeature } from "../types";
 
 interface Props {
   walls: Wall[];
   openings: Opening[];
+  features: WallFeature[];
   placements: Placement[];
   selection: Selection;
   onSelect: (selection: Selection) => void;
   onMove: (id: string, x_mm: number, y_mm: number) => void;
   onSlide: (id: string, offset_mm: number) => void;
+  onSlideFeature: (id: string, offset_mm: number) => void;
   onCommit: (selection: Selection) => void;
 }
+
+/** A radiator's mass reads on the plan; a socket or switch is a flush mark. */
+const FEATURE_COLOR: Record<WallFeature["kind"], string> = {
+  radiator: "#8d6a4a",
+  socket: "#5c6b78",
+  switch: "#5c6b78",
+  vent: "#6b7a6a",
+  pipe: "#6b7a6a",
+  other: "#6f6b60",
+};
 
 interface View {
   x: number;
@@ -114,11 +128,13 @@ function Cotation({
 export function FloorPlan({
   walls,
   openings,
+  features,
   placements,
   selection,
   onSelect,
   onMove,
   onSlide,
+  onSlideFeature,
   onCommit,
 }: Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -140,15 +156,30 @@ export function FloorPlan({
         const frame = frames.get(o.wall_id);
         if (!frame) return [];
         const polygon = doorSwingPolygon(frame, o);
-        return polygon.length ? [{ openingId: o.id, polygon }] : [];
+        return polygon.length
+          ? [{ source: { kind: "opening" as const, id: o.id }, polygon }]
+          : [];
       }),
     [openings, frames],
   );
 
+  const clearances = useMemo(
+    () =>
+      features.flatMap((f) => {
+        const frame = frames.get(f.wall_id);
+        if (!frame) return [];
+        const polygon = featureClearancePolygon(frame, f);
+        return polygon.length
+          ? [{ source: { kind: "feature" as const, id: f.id }, polygon }]
+          : [];
+      }),
+    [features, frames],
+  );
+
   const collisions = useMemo(() => findCollisions(placements), [placements]);
   const obstructions = useMemo(
-    () => findObstructions(placements, swings),
-    [placements, swings],
+    () => findObstructions(placements, [...swings, ...clearances]),
+    [placements, swings, clearances],
   );
 
   /**
@@ -255,13 +286,20 @@ export function FloorPlan({
 
       if (drag.selection.kind === "placement") {
         onMove(drag.selection.id, snap(world.x - drag.dx), snap(world.y - drag.dy));
-      } else {
+      } else if (drag.selection.kind === "opening") {
         // An opening cannot leave its wall, so the pointer is projected onto
         // the wall line and clamped to the span the opening can occupy.
         const opening = openings.find((o) => o.id === drag.selection!.id);
         const frame = opening && frames.get(opening.wall_id);
         if (opening && frame) {
           onSlide(opening.id, snap(projectOntoWall(frame, world, opening.width_mm)));
+        }
+      } else {
+        // Same idea, for a fitting sliding along its wall.
+        const feature = features.find((f) => f.id === drag.selection!.id);
+        const frame = feature && frames.get(feature.wall_id);
+        if (feature && frame) {
+          onSlideFeature(feature.id, snap(projectOntoWall(frame, world, feature.width_mm)));
         }
       }
       return;
@@ -305,6 +343,27 @@ export function FloorPlan({
       { x: b.x + n.x, y: b.y + n.y },
       { x: b.x - n.x, y: b.y - n.y },
       { x: a.x - n.x, y: a.y - n.y },
+    ];
+  };
+
+  /**
+   * The footprint a fitting draws on the inward wall face, projecting into
+   * the room by its depth. A flush fitting (socket, switch) has ~0 depth, so
+   * a small floor keeps it visible rather than collapsing to a line.
+   */
+  const featureQuad = (feature: WallFeature): Vec[] | null => {
+    const frame = frames.get(feature.wall_id);
+    if (!frame) return null;
+    const a = along(frame, feature.offset_mm);
+    const b = along(frame, feature.offset_mm + feature.width_mm);
+    const face = { x: frame.inward.x * WALL_MM * 0.5, y: frame.inward.y * WALL_MM * 0.5 };
+    const depth = Math.max(feature.depth_mm, 30);
+    const proj = { x: frame.inward.x * depth, y: frame.inward.y * depth };
+    return [
+      { x: a.x + face.x, y: a.y + face.y },
+      { x: b.x + face.x, y: b.y + face.y },
+      { x: b.x + face.x + proj.x, y: b.y + face.y + proj.y },
+      { x: a.x + face.x + proj.x, y: a.y + face.y + proj.y },
     ];
   };
 
@@ -455,6 +514,39 @@ export function FloorPlan({
               );
             })}
 
+            {features.map((f) => {
+              const frame = frames.get(f.wall_id);
+              const quad = frame && featureQuad(f);
+              if (!frame || !quad) return null;
+              const isSelected = selection?.kind === "feature" && selection.id === f.id;
+              const a = along(frame, f.offset_mm);
+              const clearance = featureClearancePolygon(frame, f);
+
+              return (
+                <g
+                  key={f.id}
+                  className="feature"
+                  onPointerDown={(e) => startDrag(e, { kind: "feature", id: f.id }, a)}
+                >
+                  {clearance.length > 2 && (
+                    <path
+                      d={path(clearance)}
+                      fill={isSelected ? "#3c7ea118" : "#00000008"}
+                      stroke={isSelected ? "var(--blueprint)" : "none"}
+                      strokeWidth={1.6 * scale}
+                    />
+                  )}
+                  <path
+                    d={path(quad)}
+                    fill={FEATURE_COLOR[f.kind]}
+                    fillOpacity={isSelected ? 0.9 : 0.65}
+                    stroke={isSelected ? "var(--blueprint)" : "none"}
+                    strokeWidth={2 * scale}
+                  />
+                </g>
+              );
+            })}
+
             {placements.map((p) => {
               const isSelected = selection?.kind === "placement" && selection.id === p.id;
               const outside = isOutsideRoom(p, room);
@@ -542,7 +634,8 @@ export function FloorPlan({
         {mmToCm(roomBounds.maxY - roomBounds.minY)} cm · scroll to zoom, drag the background to pan
         {collisions.length > 0 &&
           ` · ${collisions.length} clash${collisions.length > 1 ? "es" : ""}`}
-        {obstructions.length > 0 && ` · ${obstructions.length} blocking a door`}
+        {obstructions.length > 0 &&
+          ` · ${obstructions.length} blocking a door or fitting`}
       </div>
     </div>
   );

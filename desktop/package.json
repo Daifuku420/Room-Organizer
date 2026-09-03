@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "tauri": "tauri",
     "app": "tauri dev",
-    "app:build": "tauri build"
+    "app:build": "tauri build",
+    "test": "vitest run"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.1.1",
@@ -22,6 +23,7 @@
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "vite": "^6.0.5"
+    "vite": "^6.0.5",
+    "vitest": "^3.2.7"
   }
 }

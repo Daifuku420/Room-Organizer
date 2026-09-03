@@ -12,12 +12,94 @@ Revision ID: 0001_baseline
 Revises:
 """
 
+import re
+
 from alembic import op
 
 revision = "0001_baseline"
 down_revision = None
 branch_labels = None
 depends_on = None
+
+
+def _statements(script: str) -> list[str]:
+    """Split a SQL script into individual statements.
+
+    asyncpg — the driver both the app and these migrations use — always
+    PREPAREs a statement before running it, and Postgres's extended query
+    protocol refuses to prepare more than one command at once. A script this
+    size has to reach op.execute() one statement at a time, so this walks the
+    text respecting quoted strings, quoted identifiers, dollar-quoted
+    function bodies, and line comments, and splits only on the semicolons
+    left over.
+    """
+    parts: list[str] = []
+    buf: list[str] = []
+    i, n = 0, len(script)
+    dollar_tag: str | None = None
+
+    while i < n:
+        ch = script[i]
+
+        if dollar_tag is not None:
+            if script.startswith(dollar_tag, i):
+                buf.append(dollar_tag)
+                i += len(dollar_tag)
+                dollar_tag = None
+            else:
+                buf.append(ch)
+                i += 1
+            continue
+
+        if script.startswith("--", i):
+            end = script.find("\n", i)
+            end = n if end == -1 else end
+            buf.append(script[i:end])
+            i = end
+            continue
+
+        if ch in "'\"":
+            end = i + 1
+            while end < n:
+                if script[end] == ch:
+                    if script[end : end + 2] == ch * 2:  # escaped '' or ""
+                        end += 2
+                        continue
+                    end += 1
+                    break
+                end += 1
+            buf.append(script[i:end])
+            i = end
+            continue
+
+        tag = re.match(r"\$[A-Za-z_]*\$", script[i:])
+        if tag:
+            dollar_tag = tag.group(0)
+            buf.append(dollar_tag)
+            i += len(dollar_tag)
+            continue
+
+        if ch == ";":
+            parts.append("".join(buf))
+            buf = []
+            i += 1
+            continue
+
+        buf.append(ch)
+        i += 1
+
+    if "".join(buf).strip():
+        parts.append("".join(buf))
+
+    # Drop fragments that are only comments/whitespace — the gaps between
+    # statements above, once split on ';' — since PREPAREing an empty
+    # statement is itself an error.
+    return [
+        p
+        for p in parts
+        if any(line.split("--", 1)[0].strip() for line in p.splitlines())
+    ]
+
 
 SCHEMA = r"""
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -296,21 +378,24 @@ INSERT INTO catalog_source (key, name, base_url) VALUES
 
 
 def upgrade() -> None:
-    op.execute(SCHEMA)
+    for statement in _statements(SCHEMA):
+        op.execute(statement)
+
+
+DOWNGRADE = """
+DROP TABLE IF EXISTS placement, layout, catalog_variant, catalog_item,
+                     catalog_source, scan_photo, scan, wall_feature,
+                     opening, wall, room, pairing_code, device, workspace
+            CASCADE;
+DROP FUNCTION IF EXISTS touch_updated_at() CASCADE;
+DROP TYPE IF EXISTS mesh_status, feature_kind, swing_dir, opening_kind,
+                    scan_status, ceiling_kind, device_kind CASCADE;
+"""
 
 
 def downgrade() -> None:
     # Reverse dependency order. Dropping the tables takes their indexes,
     # constraints and triggers with them; the enums and the function are
     # standalone and have to go by hand.
-    op.execute(
-        """
-        DROP TABLE IF EXISTS placement, layout, catalog_variant, catalog_item,
-                             catalog_source, scan_photo, scan, wall_feature,
-                             opening, wall, room, pairing_code, device, workspace
-                    CASCADE;
-        DROP FUNCTION IF EXISTS touch_updated_at() CASCADE;
-        DROP TYPE IF EXISTS mesh_status, feature_kind, swing_dir, opening_kind,
-                            scan_status, ceiling_kind, device_kind CASCADE;
-        """
-    )
+    for statement in _statements(DOWNGRADE):
+        op.execute(statement)

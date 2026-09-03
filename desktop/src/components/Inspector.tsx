@@ -1,5 +1,6 @@
+import type { Obstruction } from "../geometry";
 import { mmToCm } from "../geometry";
-import type { Opening, Placement, SwingDir, Wall } from "../types";
+import type { Opening, Placement, SwingDir, Wall, WallFeature } from "../types";
 
 const ROTATIONS = [0, 900, 1800, 2700];
 
@@ -41,18 +42,20 @@ function CmInput({
 export function PlacementInspector({
   placement,
   clashes,
-  blocksDoor,
+  blocks,
   onChange,
   onCommit,
   onDelete,
 }: {
   placement: Placement;
   clashes: number;
-  blocksDoor: boolean;
+  blocks: Obstruction[];
   onChange: (patch: Partial<Placement>) => void;
   onCommit: () => void;
   onDelete: () => void;
 }) {
+  const blocksDoor = blocks.some((o) => o.source.kind === "opening");
+  const blocksClearance = blocks.some((o) => o.source.kind === "feature");
   return (
     <>
       <div className="field">
@@ -128,6 +131,13 @@ export function PlacementInspector({
         <p className="error">
           Stands where a door needs to open. Move it clear of the swing, or change
           the door to slide.
+        </p>
+      )}
+
+      {blocksClearance && (
+        <p className="error">
+          Stands in a fitting's clearance. Move it clear, or reduce the fitting's
+          clearance if it doesn't need the space.
         </p>
       )}
 
@@ -247,6 +257,116 @@ export function OpeningInspector({
 
       <button className="danger" onClick={onDelete}>
         Remove {opening.kind}
+      </button>
+    </>
+  );
+}
+
+export function FeatureInspector({
+  feature,
+  walls,
+  blockedBy,
+  onChange,
+  onCommit,
+  onDelete,
+}: {
+  feature: WallFeature;
+  walls: Wall[];
+  blockedBy: number;
+  onChange: (patch: Partial<WallFeature>) => void;
+  onCommit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <>
+      <div className="field">
+        <label htmlFor="flabel">Label</label>
+        <input
+          id="flabel"
+          value={feature.label ?? ""}
+          onChange={(e) => onChange({ label: e.target.value || null })}
+          onBlur={onCommit}
+        />
+      </div>
+
+      <div className="field">
+        <label htmlFor="fwall">On wall</label>
+        <select
+          id="fwall"
+          value={feature.wall_id}
+          onChange={(e) => {
+            onChange({ wall_id: e.target.value, offset_mm: 0 });
+            queueMicrotask(onCommit);
+          }}
+        >
+          {walls.map((w) => (
+            <option key={w.id} value={w.id}>
+              Wall {w.seq + 1} · {mmToCm(Math.hypot(w.x2_mm - w.x1_mm, w.y2_mm - w.y1_mm))} cm
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="field field-row">
+        <CmInput
+          id="foff"
+          label="From corner"
+          mm={feature.offset_mm}
+          onChange={(mm) => onChange({ offset_mm: Math.max(0, mm) })}
+          onCommit={onCommit}
+        />
+        <CmInput
+          id="fw"
+          label="Width"
+          mm={feature.width_mm}
+          onChange={(mm) => onChange({ width_mm: Math.max(10, mm) })}
+          onCommit={onCommit}
+        />
+      </div>
+
+      <div className="field field-row">
+        <CmInput
+          id="fz"
+          label="Height above floor"
+          mm={feature.z_mm}
+          onChange={(mm) => onChange({ z_mm: Math.max(0, mm) })}
+          onCommit={onCommit}
+        />
+        <CmInput
+          id="fh"
+          label="Height"
+          mm={feature.height_mm}
+          onChange={(mm) => onChange({ height_mm: Math.max(10, mm) })}
+          onCommit={onCommit}
+        />
+      </div>
+
+      <div className="field field-row">
+        <CmInput
+          id="fd"
+          label="Depth"
+          mm={feature.depth_mm}
+          onChange={(mm) => onChange({ depth_mm: Math.max(0, mm) })}
+          onCommit={onCommit}
+        />
+        <CmInput
+          id="fc"
+          label="Clearance"
+          mm={feature.clearance_mm}
+          onChange={(mm) => onChange({ clearance_mm: Math.max(0, mm) })}
+          onCommit={onCommit}
+        />
+      </div>
+
+      {blockedBy > 0 && (
+        <p className="error">
+          {blockedBy === 1 ? "A piece stands" : `${blockedBy} pieces stand`} in this
+          fitting's clearance.
+        </p>
+      )}
+
+      <button className="danger" onClick={onDelete}>
+        Remove {feature.kind}
       </button>
     </>
   );

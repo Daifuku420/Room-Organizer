@@ -22,23 +22,32 @@ export interface Bounds {
 
 const EPSILON = 1e-9;
 
-/** Footprint corners of a placement, in order, rotated about its centre. */
-export function corners(p: Placement): Vec[] {
+/**
+ * Maps a point in a placement's local frame — centred on the piece, unrotated
+ * — into room (world) coordinates. Glyphs are authored in this local frame so
+ * they don't have to know their own rotation; corners() is just the special
+ * case of transforming its four box corners.
+ */
+export function fromLocal(p: Placement, local: Vec): Vec {
   const rad = ((p.rotation_ddeg / 10) * Math.PI) / 180;
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);
+  return {
+    x: p.x_mm + local.x * cos - local.y * sin,
+    y: p.y_mm + local.x * sin + local.y * cos,
+  };
+}
+
+/** Footprint corners of a placement, in order, rotated about its centre. */
+export function corners(p: Placement): Vec[] {
   const hw = p.width_mm / 2;
   const hd = p.depth_mm / 2;
-
   return [
     { x: -hw, y: -hd },
     { x: hw, y: -hd },
     { x: hw, y: hd },
     { x: -hw, y: hd },
-  ].map(({ x, y }) => ({
-    x: p.x_mm + x * cos - y * sin,
-    y: p.y_mm + x * sin + y * cos,
-  }));
+  ].map((local) => fromLocal(p, local));
 }
 
 export function polygonArea(poly: Vec[]): number {

@@ -153,6 +153,7 @@ export function Editor({ roomId, onBack }: { roomId: string; onBack: () => void 
         depth_mm: preset.depth_mm,
         height_mm: preset.height_mm,
         catalog_item_id: null,
+        category: preset.category,
       });
       setLayout({ ...layout, placements: [...layout.placements, created] });
       setSelection({ kind: "placement", id: created.id });
@@ -178,6 +179,7 @@ export function Editor({ roomId, onBack }: { roomId: string; onBack: () => void 
         depth_mm: item.depth_mm,
         height_mm: item.height_mm,
         catalog_item_id: item.id,
+        category: item.category,
       });
       setLayout({ ...layout, placements: [...layout.placements, created] });
       setSelection({ kind: "placement", id: created.id });

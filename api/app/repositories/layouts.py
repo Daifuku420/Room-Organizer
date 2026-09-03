@@ -11,7 +11,8 @@ from ..schemas import PlacementCreate, PlacementPatch
 
 _PLACEMENT_COLS = """
     p.id::text, p.label, p.x_mm, p.y_mm, p.z_mm, p.rotation_ddeg,
-    p.width_mm, p.depth_mm, p.height_mm, p.locked, p.catalog_item_id::text
+    p.width_mm, p.depth_mm, p.height_mm, p.locked, p.catalog_item_id::text,
+    p.category
 """
 
 
@@ -85,12 +86,12 @@ async def add_placement(
     row = await conn.fetchrow(
         f"""
         INSERT INTO placement AS p (layout_id, label, x_mm, y_mm, z_mm, rotation_ddeg,
-                               width_mm, depth_mm, height_mm, catalog_item_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                               width_mm, depth_mm, height_mm, catalog_item_id, category)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
           RETURNING {_PLACEMENT_COLS}
         """,
         layout_id, body.label, body.x_mm, body.y_mm, body.z_mm, body.rotation_ddeg,
-        body.width_mm, body.depth_mm, body.height_mm, body.catalog_item_id,
+        body.width_mm, body.depth_mm, body.height_mm, body.catalog_item_id, body.category,
     )
     return dict(row)
 

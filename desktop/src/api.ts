@@ -183,19 +183,24 @@ export const FEATURE_PRESETS = {
   },
 } as const;
 
-/** Sensible starting sizes so a plan can be built before the catalog exists. */
+/**
+ * Sensible starting sizes so a plan can be built before the catalog exists.
+ * `category` picks a glyph the same way a catalog item's category does — see
+ * glyphs.ts — so a hand-entered bed looks like one too, not just a box.
+ */
 export const PRESETS: {
   label: string;
   width_mm: number;
   depth_mm: number;
   height_mm: number;
+  category: string | null;
 }[] = [
-  { label: "Bed 140", width_mm: 1400, depth_mm: 1900, height_mm: 500 },
-  { label: "Bed 90", width_mm: 900, depth_mm: 1900, height_mm: 500 },
-  { label: "Desk", width_mm: 1200, depth_mm: 600, height_mm: 740 },
-  { label: "Wardrobe", width_mm: 1000, depth_mm: 600, height_mm: 2000 },
-  { label: "Shelf", width_mm: 800, depth_mm: 300, height_mm: 1800 },
-  { label: "Chair", width_mm: 450, depth_mm: 450, height_mm: 900 },
-  { label: "Drawers", width_mm: 800, depth_mm: 450, height_mm: 700 },
-  { label: "Rug", width_mm: 1600, depth_mm: 2300, height_mm: 10 },
+  { label: "Bed 140", width_mm: 1400, depth_mm: 1900, height_mm: 500, category: "bed" },
+  { label: "Bed 90", width_mm: 900, depth_mm: 1900, height_mm: 500, category: "bed" },
+  { label: "Desk", width_mm: 1200, depth_mm: 600, height_mm: 740, category: "desk" },
+  { label: "Wardrobe", width_mm: 1000, depth_mm: 600, height_mm: 2000, category: "wardrobe" },
+  { label: "Shelf", width_mm: 800, depth_mm: 300, height_mm: 1800, category: "bookshelf" },
+  { label: "Chair", width_mm: 450, depth_mm: 450, height_mm: 900, category: "chair" },
+  { label: "Drawers", width_mm: 800, depth_mm: 450, height_mm: 700, category: "dresser" },
+  { label: "Rug", width_mm: 1600, depth_mm: 2300, height_mm: 10, category: null },
 ];

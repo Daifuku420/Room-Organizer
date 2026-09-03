@@ -16,6 +16,7 @@ import {
   featureClearancePolygon,
   findCollisions,
   findObstructions,
+  fromLocal,
   gapsToWalls,
   isOutsideRoom,
   mmToCm,
@@ -26,6 +27,7 @@ import {
   wallFrame,
   type Vec,
 } from "../geometry";
+import { glyphFor } from "../glyphs";
 import type { Opening, Placement, Selection, Wall, WallFeature } from "../types";
 
 interface Props {
@@ -64,6 +66,10 @@ const WALL_MM = 100;
 
 const path = (poly: Vec[]) =>
   poly.map((p, i) => `${i === 0 ? "M" : "L"}${p.x} ${p.y}`).join(" ") + " Z";
+
+/** Same as path(), but open — for a glyph's detail lines, not a closed shape. */
+const openPath = (poly: Vec[]) =>
+  poly.map((p, i) => `${i === 0 ? "M" : "L"}${p.x} ${p.y}`).join(" ");
 
 /** Text sits in flipped space, so it needs its own flip to read the right way up. */
 function PlanText({
@@ -550,6 +556,12 @@ export function FloorPlan({
             {placements.map((p) => {
               const isSelected = selection?.kind === "placement" && selection.id === p.id;
               const outside = isOutsideRoom(p, room);
+              const glyphStroke = isSelected
+                ? "var(--blueprint)"
+                : outside
+                  ? "var(--sanguine)"
+                  : "#6f6b60";
+              const glyph = glyphFor(p.category, p.width_mm, p.depth_mm);
               return (
                 <g
                   key={p.id}
@@ -562,9 +574,20 @@ export function FloorPlan({
                   <path
                     d={path(corners(p))}
                     fill={p.locked ? "#cfcabc" : "#d8d3c6"}
-                    stroke={isSelected ? "var(--blueprint)" : outside ? "var(--sanguine)" : "#6f6b60"}
+                    stroke={glyphStroke}
                     strokeWidth={(isSelected ? 4 : 2.2) * scale}
                   />
+                  {glyph.map((line, i) => (
+                    <path
+                      key={i}
+                      d={openPath(line.map((local) => fromLocal(p, local)))}
+                      fill="none"
+                      stroke={glyphStroke}
+                      strokeWidth={1.4 * scale}
+                      strokeOpacity={0.8}
+                      pointerEvents="none"
+                    />
+                  ))}
                   <PlanText x={p.x_mm} y={p.y_mm} className="piece-label">
                     {p.label}
                   </PlanText>

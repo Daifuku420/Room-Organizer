@@ -98,6 +98,7 @@ class PlacementCreate(BaseModel):
     depth_mm: int = Field(gt=0, le=20_000)
     height_mm: int = Field(gt=0, le=10_000)
     catalog_item_id: str | None = None
+    category: str | None = Field(default=None, max_length=60)
 
 
 class PlacementPatch(BaseModel):
@@ -126,6 +127,7 @@ class Placement(BaseModel):
     height_mm: int
     locked: bool
     catalog_item_id: str | None
+    category: str | None
 
 
 class LayoutDetail(LayoutSummary):

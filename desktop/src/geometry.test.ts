@@ -8,6 +8,7 @@ import {
   featureClearancePolygon,
   findCollisions,
   findObstructions,
+  fromLocal,
   gapsToWalls,
   intersectConvex,
   isOutsideRoom,
@@ -36,6 +37,7 @@ function placement(overrides: Partial<Placement> = {}): Placement {
     height_mm: 600,
     locked: false,
     catalog_item_id: null,
+    category: null,
     ...overrides,
   };
 }
@@ -84,6 +86,21 @@ function feature(overrides: Partial<WallFeature> = {}): WallFeature {
     ...overrides,
   };
 }
+
+describe("fromLocal", () => {
+  it("is the identity translation for an unrotated placement", () => {
+    const p = placement({ x_mm: 500, y_mm: 300, rotation_ddeg: 0 });
+    expect(fromLocal(p, { x: 10, y: -20 })).toEqual({ x: 510, y: 280 });
+  });
+
+  it("rotates the local point about the placement's centre first", () => {
+    const p = placement({ x_mm: 0, y_mm: 0, rotation_ddeg: 900 });
+    // A 90 degree turn sends local +x to world +y.
+    const world = fromLocal(p, { x: 10, y: 0 });
+    expect(world.x).toBeCloseTo(0, 9);
+    expect(world.y).toBeCloseTo(10, 9);
+  });
+});
 
 describe("corners", () => {
   it("returns an axis-aligned box centred on the placement when unrotated", () => {

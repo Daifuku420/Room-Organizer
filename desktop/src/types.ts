@@ -44,6 +44,7 @@ export interface Placement {
   height_mm: number;
   locked: boolean;
   catalog_item_id: string | null;
+  category: string | null;
 }
 
 export interface LayoutDetail extends LayoutSummary {
